@@ -13,7 +13,47 @@ This is an automatic script that asynchronously downloads all historic transcrip
 
 ## Installation
 
+#### Git
 
+Git for Windows can be downloaded here: 
+
+https://github.com/git-for-windows/git/releases/download/v2.32.0.windows.1/Git-2.32.0-64-bit.exe
+
+Always click "Next" during the installation.
+
+Afterwards right click "Desktop" in the Explorer and click "Git Bash Here". A command line will open. Copy this text and paste (right click -> Paste) it in the window. Press Enter.  
+
+```
+git clone https://github.com/lradeck/alexa-transcript-downloader.git
+```
+
+There should be a new folder on the desktop now, that says "alexa-transcript-downloader".
+
+#### Python 3
+
+Download Python 3.9.6 here: https://www.python.org/ftp/python/3.9.6/python-3.9.6-amd64.exe
+
+**Click "Add Python 3.9 to path"** and continue with the installation. 
+
+Afterwards open a new command line (Press WINDOWS + R, then enter "cmd" and press Enter). 
+
+Navigate to the folder of the script by typing "cd" and then the folder location. You can also type "cd" and then drag and drop the script folder into the black window. The command should look like this: 
+
+```
+cd C:\Users\Test\Documents\script
+```
+
+After pressing enter, type in this:
+
+```
+pip install -r reqirements.txt 
+```
+
+This should start the installation of the script dependencies. 
+
+#### Chrome
+
+Install Google Chrome by using a Google Search. 
 
 ## Execution
 
@@ -39,15 +79,21 @@ If you type in "dir" into the command line and press enter, something like this 
 02.07.2021  13:47             4.668 main.py
 ```
 
-If you see "main.py" in the console output. You are set the execute the script. 
+Open credentials.yml with a text editor (e.g. Notepad). Remove the content and enter your accounts details like this: 
 
-You execute the script by typing in: 
+test@web.de: Passwort456
+
+test2@web.de: Passwort234
+
+Save the file.
+
+You can then execute the script by typing in: 
 
 ```
-python3 main.py credentials.yml
+python main.py credentials.yml
 ```
 
-The script the starts executing and Chrome should open several times to login to the accounts. Each first login to an account must be confirmed by clicking on a link in the confirmation email. One option is to login to each account manually before executing the script. You can also click on the link in the confirmation email while the script is running. It then waits until you clicked the link and then continues. 
+The script then starts executing and Chrome should open several times to login to the accounts. Each first login to an account must be confirmed by clicking on a link in the confirmation email. One option is to login to each account manually before executing the script. You can also click on the link in the confirmation email while the script is running. It then waits two minutes until you clicked the link and then continues. 
 
 
 
