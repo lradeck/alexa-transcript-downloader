@@ -46,7 +46,7 @@ cd C:\Users\Test\Documents\script
 After pressing enter, type in this:
 
 ```
-pip install -r reqirements.txt 
+pip install -r requirements.txt 
 ```
 
 This should start the installation of the script dependencies. 
