@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 
 class Device:
@@ -8,9 +9,6 @@ class Device:
     def __init__(self, device_name: str, device_entity_id: None) -> None:
         self.device_name = device_name
         self.device_entity_id = device_entity_id
-
-    def __eq__(self, other):
-        return isinstance(other, Device) and str(self.device_name) == str(other.device_name)
 
     def __hash__(self):
         return hash(str(self.device_name))
@@ -39,9 +37,6 @@ class VoiceHistoryRecordItem:
         self.timestamp = timestamp
         self.transcript_text = transcript_text
         self.agent_visual_name = agent_visual_name
-
-    def __eq__(self, other):
-        return isinstance(other, Record) and str(self.record_item_key) == str(other.record_key)
 
     def __hash__(self):
         return hash(str(self.record_item_key))
@@ -84,9 +79,6 @@ class Record:
         self.intent = intent
         self.skill_name = skill_name
         self.voice_history_record_items = voice_history_record_items
-
-    def __eq__(self, other):
-        return isinstance(other, Record) and str(self.record_key) == str(other.record_key)
 
     def __hash__(self):
         return hash(str(self.record_key))
@@ -139,10 +131,6 @@ class CustomerHistoryRecord:
         self.encoded_request_token = encoded_request_token
         self.no_data_found_within_time_limit = no_data_found_within_time_limit
         self.last_record_timestamp = last_record_timestamp
-
-    def __eq__(self, other):
-        return isinstance(other, CustomerHistoryRecord) and str(self.encodedRequestToken) == str(
-            other.encodedRequestToken)
 
     def __hash__(self):
         return hash(str(self.encodedRequestToken))
