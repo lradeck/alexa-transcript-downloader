@@ -1,24 +1,29 @@
 import asyncio
+import glob
 import json
 import os
+import pickle
 import sys
 from datetime import datetime
 from pathlib import Path
 
 from aiohttp import ClientSession
-from fake_useragent import UserAgent
+from pytz import timezone
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 
 from dtos import CustomerHistoryRecord
 from in_out import InOut
 
-ua = UserAgent()
+FILE_DATE_FORMAT = "%Y_%m_%d %H_%M_%S"
 
 
 def get_new_valid_session(user, password):
-    driver = webdriver.Chrome('chromedriver.exe')
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
     driver.get("https://alexa.amazon.de")
     email_input = driver.find_element_by_id("ap_email")
     email_input.send_keys(user)
@@ -29,7 +34,7 @@ def get_new_valid_session(user, password):
     try:
         WebDriverWait(driver, 120).until(lambda x: x.find_element_by_id("fa-carousel-title"))
     except TimeoutException:
-        print("Skipping "+user+ " because of timeout. Did you confirm the login email?")
+        print("Skipping " + user + " because of timeout. Did you confirm the login email?")
         return None
     return {cookie["name"]: cookie["value"] for cookie in driver.get_cookies()}
 
@@ -50,8 +55,8 @@ def get_task_results():
 async def create_tasks(loop, credentials):
     tasks = []
     for username in credentials:
-        task = loop.create_task(execute_task(username, credentials[username]))
-        tasks.append(task)
+            task = loop.create_task(execute_task(username, credentials[username]))
+            tasks.append(task)
     done_tasks, _ = await asyncio.wait(tasks)
     return done_tasks
 
@@ -99,23 +104,43 @@ async def execute_task(user, password):
         if len(history_record.records) > 0:
             previous_request_token = history_record.encoded_request_token
             all_records.update(history_record.records)
-            print("Added "+str(len(all_records))+" records for customer "+user)
+            print("Added " + str(len(all_records)) + " records for customer " + user)
         else:
             previous_request_token = None
         counter = counter + 1
 
-    user_dir = Path(script_execution +"/"+user)
-    if not os.path.exists(user_dir):
-        os.makedirs(user_dir)
-    InOut.write_to_excel(all_records, user_dir / "records.xlsx")
     await session.close()
     return all_records
 
-script_execution = datetime.now().strftime('%Y_%m_%d %H_%M_%S')
-total_dir = Path(script_execution)
-data = get_task_results()
-total_records = set()
-for records in data:
-    total_records.update(records)
-InOut().write_to_excel(total_records,total_dir / "all_records.xlsx")
-print("Downloaded "+str(len(total_records))+ " records of "+str(len(data))+ " participants.")
+
+def read_last_records():
+    os.chdir(".")
+    dates = []
+    old_records = set()
+    for file in glob.glob("*.xlsx"):
+        try:
+            dates.append(datetime.strptime(Path(file).stem, FILE_DATE_FORMAT))
+        except:
+            pass
+    if len(dates) > 0:
+        dates.sort()
+        old_records = InOut.read_from_excel(dates[0].strftime(FILE_DATE_FORMAT)+".xlsx")
+
+    return old_records
+
+
+def run():
+    script_execution = datetime.now(timezone('Europe/Berlin')).strftime(FILE_DATE_FORMAT)
+    total_dir = Path(script_execution)
+    data = get_task_results()
+    total_records = set()
+    for records in data:
+        total_records.update(records)
+    last_records = read_last_records()
+    total_records = total_records.union(last_records)
+    pickle.dump(total_records, open("test_records.p", "wb"))
+    InOut().write_to_excel(total_records, script_execution + ".xlsx")
+    print("Downloaded " + str(len(total_records)) + " records of " + str(len(data)) + " participants.")
+    print(str(len(total_records)-len(last_records))+ " records were new.")
+
+run()
