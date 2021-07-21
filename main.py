@@ -1,12 +1,14 @@
 import asyncio
 import glob
 import json
+import logging
 import os
 import pickle
 import sys
 from datetime import datetime
 from pathlib import Path
 
+import structlog
 from aiohttp import ClientSession
 from pytz import timezone
 from selenium import webdriver
@@ -16,27 +18,45 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from dtos import CustomerHistoryRecord
 from in_out import InOut
+from arsenic import get_session, services, browsers, keys
 
 FILE_DATE_FORMAT = "%Y_%m_%d %H_%M_%S"
 
 
-def get_new_valid_session(user, password):
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    driver = webdriver.Chrome('chromedriver.exe', options=chrome_options)
-    driver.get("https://alexa.amazon.de")
-    email_input = driver.find_element_by_id("ap_email")
-    email_input.send_keys(user)
-    password_input = driver.find_element_by_id("ap_password")
-    password_input.send_keys(password)
-    submit = driver.find_element_by_id("signInSubmit")
-    submit.click()
-    try:
-        WebDriverWait(driver, 120).until(lambda x: x.find_element_by_id("fa-carousel-title"))
-    except TimeoutException:
-        print("Skipping " + user + " because of timeout. Did you confirm the login email?")
-        return None
-    return {cookie["name"]: cookie["value"] for cookie in driver.get_cookies()}
+def set_arsenic_log_level(level=logging.WARNING):
+    logger = logging.getLogger('arsenic')
+
+    def logger_factory():
+        return logger
+
+    structlog.configure(logger_factory=logger_factory)
+    logger.setLevel(level)
+
+
+async def get_new_valid_session(user, password):
+    print("Logging into user " + user + "...")
+    set_arsenic_log_level(level=logging.CRITICAL)
+    service = services.Chromedriver(binary='./chromedriver.exe', log_file=os.devnull)
+    browser = browsers.Chrome()
+    # browser.capabilities = {
+    #     "goog:chromeOptions": {"args": ["--headless", "--disable-gpu"]}
+    # }
+
+    async with get_session(service, browser) as session:
+        await session.get("https://alexa.amazon.de")
+        email_input = await session.get_element("#ap_email")
+        await email_input.send_keys(user)
+        password_input = await session.get_element("#ap_password")
+        await password_input.send_keys(password)
+        submit = await session.get_element("#signInSubmit")
+        await submit.click()
+        try:
+            await session.wait_for_element(120, "#fa-carousel-title")
+        except TimeoutException:
+            print("Skipping " + user + " because of timeout. Did you confirm the login email?")
+            return None
+        print("Successfully obtained cookies for user " + user)
+        return {cookie["name"]: cookie["value"] for cookie in await session.get_all_cookies()}
 
 
 def get_task_results():
@@ -69,7 +89,7 @@ def get_parameters(previous_request_token):
 
 
 async def execute_task(user, password):
-    cookie_jar = get_new_valid_session(user, password)
+    cookie_jar = await get_new_valid_session(user, password)
     if not cookie_jar:
         return set()
     session = ClientSession()
@@ -124,7 +144,7 @@ def read_last_records():
             pass
     if len(dates) > 0:
         dates.sort()
-        old_records = InOut.read_from_excel(dates[0].strftime(FILE_DATE_FORMAT)+".xlsx")
+        old_records = InOut.read_from_excel(dates[0].strftime(FILE_DATE_FORMAT) + ".xlsx")
 
     return old_records
 
@@ -141,6 +161,7 @@ def run():
     pickle.dump(total_records, open("test_records.p", "wb"))
     InOut().write_to_excel(total_records, script_execution + ".xlsx")
     print("Downloaded " + str(len(total_records)) + " records of " + str(len(data)) + " participants.")
-    print(str(len(total_records)-len(last_records))+ " records were new.")
+    print(str(len(total_records) - len(last_records)) + " records were new.")
+
 
 run()
