@@ -23,3 +23,7 @@ urllib3==1.26.4
 webencodings==0.5.1
 XlsxWriter==1.4.3
 yarl==1.6.3
+
+backoff~=1.11.1
+structlog~=20.2.0
+arsenic~=20.9

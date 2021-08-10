@@ -202,7 +202,7 @@ async def create_collection(loop, user_cookie_tuples):
 
 async def execute_login(user, password, previous_user_cookie, service):
     cookie_jar = await get_new_valid_session(user, password, previous_user_cookie, service)
-    return (user, cookie_jar)
+    return user, cookie_jar
 
 
 @backoff.on_exception(backoff.expo, JSONDecodeError)
@@ -215,8 +215,10 @@ async def update_all_records(all_records, previous_request_token, session, user)
         'sec-ch-ua': '" Not A;Brand";v="99", "Chromium";v="90", "Google Chrome";v="90"',
         'sec-ch-ua-mobile': '?0',
         'upgrade-insecure-requests': '1',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36',
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/90.0.4430.93 Safari/537.36',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,'
+                  'application/signed-exchange;v=b3;q=0.9',
         'sec-fetch-site': 'none',
         'sec-fetch-mode': 'navigate',
         'sec-fetch-user': '?1',
@@ -257,7 +259,6 @@ def read_last_records():
 
 def run():
     script_execution = datetime.now(timezone('Europe/Berlin')).strftime(FILE_DATE_FORMAT)
-    total_dir = Path(script_execution)
     service = services.Chromedriver(binary='./chromedriver.exe', log_file=os.devnull)
     credentials_file = sys.argv[1]
 
