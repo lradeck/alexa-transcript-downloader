@@ -9,7 +9,6 @@ from datetime import datetime
 from json import JSONDecodeError
 from pathlib import Path
 
-import arsenic
 import backoff as backoff
 import structlog
 from aiohttp import ClientSession
@@ -46,44 +45,46 @@ async def login_with_cookies(session, previous_user_cookie, user):
             print(e)
     try:
         await session.get("https://alexa.amazon.de")
-        await session.wait_for_element(10, "#d-header-title")
+        await session.wait_for_element(5, "#d-header-title")
 
         cookie_jar = await get_cookie_jar(session)
         await dump_cookies(user, cookie_jar)
         print("Logged in with user " + user + " by using cookies.")
         return cookie_jar
     except ArsenicTimeout:
-        print("Could not login user " + user + " with its old cookies. Trying to login over login form...")
+        print("Could not login user " + user + " with its old cookies.")
+        print("Deleting cookies...")
+        await delete_existing_cookie(user)
 
 
 async def get_new_valid_session(user, password, previous_user_cookie, service):
     print("Logging into user " + user + "...")
     set_arsenic_log_level(level=logging.CRITICAL)
     browser = browsers.Chrome()
-    browser.capabilities = {
-        "goog:chromeOptions": {"args": ["--headless", "--disable-gpu"]}
-    }
+    # browser.capabilities = {
+    #     "goog:chromeOptions": {"args": ["--headless", "--disable-gpu"]}
+    # }
 
     cookies = {}
-    async with get_session(service, browser) as session:
-        if previous_user_cookie:
+    if previous_user_cookie:
+        async with get_session(service, browser) as session:
             cookies = await login_with_cookies(session, previous_user_cookie, user)
 
-        if not cookies:
+    if not cookies:
+        async with get_session(service, browser) as session:
             cookies = await login_over_form(cookies, password, session, user)
 
-        return cookies
+    return cookies
 
 
 async def login_manually(password, service, user):
     browser = browsers.Chrome()
     async with get_session(service, browser) as session2:
+        print("Trying to login over login form...")
         await fill_login_form_and_submit(password, session2, user)
         try:
             await session2.wait_for_element(6000, "#d-header-title")
             cookies = await get_cookie_jar(session2)
-            previous_cookies = await read_cookies()
-            previous_cookies.append(cookies)
             await dump_cookies(user, cookies)
         except ArsenicTimeout:
             print("Could not login to user " + user + ". Aborting script.")
@@ -98,12 +99,20 @@ async def read_cookies():
         return []
 
 
-async def dump_cookies(user, cookies):
+async def delete_existing_cookie(user):
     existing_cookies = await read_cookies()
+    await remove_user_cookie_tuple(existing_cookies, user)
+
+
+async def remove_user_cookie_tuple(existing_cookies, user):
     for user_cookie_tuple in existing_cookies:
         if user_cookie_tuple[0] == user:
             existing_cookies.remove(user_cookie_tuple)
 
+
+async def dump_cookies(user, cookies):
+    existing_cookies = await read_cookies()
+    await delete_existing_cookie(user)
     existing_cookies.append((user, cookies))
     pickle.dump(existing_cookies, open("cookies.p", "wb"))
 
@@ -266,9 +275,12 @@ def run():
         user_cookie_tuples.append(task.result())
 
     total_records = set()
-    for (user, cookie_jar) in user_cookie_tuples:
-        if not cookie_jar:
-            user_cookie_tuples.append((user, asyncio.run(login_manually(credentials[user], service, user))))
+    for user_cookie_tuple in user_cookie_tuples:
+        if not user_cookie_tuple[1]:
+            user = user_cookie_tuple[0]
+            user_cookie_tuples.remove(user_cookie_tuple)
+            cookie_jar = asyncio.run(login_manually(credentials[user], service, user))
+            user_cookie_tuples.append((user, cookie_jar))
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
