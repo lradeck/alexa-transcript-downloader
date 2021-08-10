@@ -61,9 +61,9 @@ async def get_new_valid_session(user, password, previous_user_cookie, service):
     print("Logging into user " + user + "...")
     set_arsenic_log_level(level=logging.CRITICAL)
     browser = browsers.Chrome()
-    # browser.capabilities = {
-    #     "goog:chromeOptions": {"args": ["--headless", "--disable-gpu"]}
-    # }
+    browser.capabilities = {
+        "goog:chromeOptions": {"args": ["--headless", "--disable-gpu"]}
+    }
 
     cookies = {}
     if previous_user_cookie:
@@ -121,19 +121,19 @@ async def dump_cookies(user, cookies):
 async def login_over_form(cookies, password, session, user):
     await fill_login_form_and_submit(password, session, user)
     try:
-        await session.wait_for_element(3, "#d-header-title")
+        await session.wait_for_element(20, "#d-header-title")
         cookies = await get_cookie_jar(session)
         await dump_cookies(user, cookies)
         print("Logged in with user " + user + " by using form.")
     except ArsenicTimeout:
-        print("Could not login user " + user + " automatically. Please complete manual login")
+        print("Could not login user " + user + " automatically because of timeout. Trying again...")
     return cookies
 
 
 async def fill_login_form_and_submit(password, session, user):
     await session.get("https://alexa.amazon.de")
     try:
-        await session.wait_for_element(10, "#ap_email")
+        await session.wait_for_element(20, "#ap_email")
     except ArsenicTimeout:
         print("Amazon is replying slowly...")
     email_input = await session.get_element("#ap_email")
@@ -159,7 +159,7 @@ async def collect_cookies(loop, credentials, service):
 
     previous_user_cookies = None
     for username in credentials:
-        for i in range(1):
+        for i in range(15):
             for user_cookie_tuple in previous_cookies:
                 if username == user_cookie_tuple[0]:
                     previous_user_cookies = user_cookie_tuple[1]
