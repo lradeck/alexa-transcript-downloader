@@ -159,12 +159,11 @@ async def collect_cookies(loop, credentials, service):
 
     previous_user_cookies = None
     for username in credentials:
-        for i in range(15):
-            for user_cookie_tuple in previous_cookies:
-                if username == user_cookie_tuple[0]:
-                    previous_user_cookies = user_cookie_tuple[1]
-            task = loop.create_task(execute_login(username, credentials[username], previous_user_cookies, service))
-            tasks.append(task)
+        for user_cookie_tuple in previous_cookies:
+            if username == user_cookie_tuple[0]:
+                previous_user_cookies = user_cookie_tuple[1]
+        task = loop.create_task(execute_login(username, credentials[username], previous_user_cookies, service))
+        tasks.append(task)
     done_tasks, _ = await asyncio.wait(tasks)
     return done_tasks
 
