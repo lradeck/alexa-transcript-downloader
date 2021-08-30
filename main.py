@@ -99,20 +99,11 @@ async def read_cookies():
         return []
 
 
-async def delete_existing_cookie(user):
+async def dump_cookies(user, cookies):
     existing_cookies = await read_cookies()
-    await remove_user_cookie_tuple(existing_cookies, user)
-
-
-async def remove_user_cookie_tuple(existing_cookies, user):
     for user_cookie_tuple in existing_cookies:
         if user_cookie_tuple[0] == user:
             existing_cookies.remove(user_cookie_tuple)
-
-
-async def dump_cookies(user, cookies):
-    existing_cookies = await read_cookies()
-    await delete_existing_cookie(user)
     existing_cookies.append((user, cookies))
     pickle.dump(existing_cookies, open("cookies.p", "wb"))
 
@@ -257,6 +248,7 @@ def read_last_records():
 
 
 def run():
+    logging.getLogger('aiohttp').setLevel(logging.WARNING)
     script_execution = datetime.now(timezone('Europe/Berlin')).strftime(FILE_DATE_FORMAT)
     service = services.Chromedriver(binary='./chromedriver.exe', log_file=os.devnull)
     credentials_file = sys.argv[1]
