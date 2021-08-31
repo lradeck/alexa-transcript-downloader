@@ -57,6 +57,13 @@ async def login_with_cookies(session, previous_user_cookie, user):
         await delete_existing_cookie(user)
 
 
+async def delete_existing_cookie(user):
+    existing_cookies = await read_cookies()
+    for user_cookie_tuple in existing_cookies:
+        if user_cookie_tuple[0] == user:
+            existing_cookies.remove(user_cookie_tuple)
+
+
 async def get_new_valid_session(user, password, previous_user_cookie, service):
     print("Logging into user " + user + "...")
     set_arsenic_log_level(level=logging.CRITICAL)
@@ -100,10 +107,8 @@ async def read_cookies():
 
 
 async def dump_cookies(user, cookies):
+    await delete_existing_cookie(user)
     existing_cookies = await read_cookies()
-    for user_cookie_tuple in existing_cookies:
-        if user_cookie_tuple[0] == user:
-            existing_cookies.remove(user_cookie_tuple)
     existing_cookies.append((user, cookies))
     pickle.dump(existing_cookies, open("cookies.p", "wb"))
 
@@ -266,17 +271,19 @@ def run():
     for task in done_tasks:
         user_cookie_tuples.append(task.result())
 
-    total_records = set()
+    final_cookies = []
     for user_cookie_tuple in user_cookie_tuples:
         if not user_cookie_tuple[1]:
             user = user_cookie_tuple[0]
-            user_cookie_tuples.remove(user_cookie_tuple)
-            cookie_jar = asyncio.run(login_manually(credentials[user], service, user))
-            user_cookie_tuples.append((user, cookie_jar))
+            cookies = asyncio.run(login_manually(credentials[user], service, user))
+            final_cookies.append((user, cookies))
+        else:
+            final_cookies.append((user_cookie_tuple[0], user_cookie_tuple[1]))
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    done_tasks = loop.run_until_complete(create_collection(loop, user_cookie_tuples))
+    done_tasks = loop.run_until_complete(create_collection(loop, final_cookies))
+    total_records = set()
     for task in done_tasks:
         result = task.result()
         total_records.update(result)
